@@ -81,6 +81,7 @@ def command_stats_handler(message):
     photo = user.photo_count
     video = user.video_count
     audio = user.audio_count
+    sticker = user.sticker_count
 
     return bot.send_message(
         message.chat.id,
@@ -90,8 +91,9 @@ def command_stats_handler(message):
 🔤 Words: <b>{words}</b>
 🔣 Characters: <b>{chars}</b>
 🖼️ Photo: <b>{photo}</b>
-📹 Video: <b>{video}<b>
+📹 Video: <b>{video}</b>
 🎵 Audio: <b>{audio}</b>
+✨ Sticker: <b>{sticker}</b>
         ''',
         parse_mode='HTML'
     )
@@ -147,6 +149,7 @@ def command_chats_handler(message):
     photo = user_obj.photo_count
     video = user_obj.video_count
     audio = user_obj.audio_count
+    sticker = user_obj.sticker_count
 
     return bot.send_message(
         message.chat.id,
@@ -160,6 +163,7 @@ def command_chats_handler(message):
 🖼️ Photo: <b>{photo}</b>
 📹 Video: <b>{video}<b>
 🎵 Audio: <b>{audio}</b>
+✨ Sticker: <b>{sticker}</b>
         ''',
         parse_mode='HTML'
     )
