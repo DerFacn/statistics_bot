@@ -15,6 +15,11 @@ class Chat(Base):
 
     words_count: Mapped[int] = mapped_column(default=0)
     ch_count: Mapped[int] = mapped_column(default=0)
+    photo_count: Mapped[int] = mapped_column(default=0)
+    video_count: Mapped[int] = mapped_column(default=0)
+    audio_count: Mapped[int] = mapped_column(default=0)
+    sticker_count: Mapped[int] = mapped_column(default=0)
+
     created_at: Mapped[str] = mapped_column(server_default=func.now())
 
 
@@ -26,6 +31,10 @@ class User(Base):
 
     word_count: Mapped[int] = mapped_column(default=0)
     ch_count: Mapped[int] = mapped_column(default=0)
+    photo_count: Mapped[int] = mapped_column(default=0)
+    video_count: Mapped[int] = mapped_column(default=0)
+    audio_count: Mapped[int] = mapped_column(default=0)
+    sticker_count: Mapped[int] = mapped_column(default=0)
 
     chat_id: Mapped[int] = mapped_column(ForeignKey('chats.id'))
     chat: Mapped[List['Chat']] = relationship(back_populates='users')
