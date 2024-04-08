@@ -169,7 +169,8 @@ def command_chats_handler(message):
     )
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['text'])
+@bot.message_handler(chat_types=['supergroup'], content_types=['text'],
+                     func=lambda message: not message.from_user.is_bot)
 def message_handler(message):
 
     chat, user = initialize(message)
@@ -185,7 +186,8 @@ def message_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['photo'])
+@bot.message_handler(chat_types=['supergroup'], content_types=['photo'],
+                     func=lambda message: not message.from_user.is_bot)
 def photo_handler(message):
 
     chat, user = initialize(message)
@@ -196,7 +198,8 @@ def photo_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['video'])
+@bot.message_handler(chat_types=['supergroup'], content_types=['video'],
+                     func=lambda message: not message.from_user.is_bot)
 def video_handler(message):
 
     chat, user = initialize(message)
@@ -207,7 +210,8 @@ def video_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['audio'])
+@bot.message_handler(chat_types=['supergroup'], content_types=['audio'],
+                     func=lambda message: not message.from_user.is_bot)
 def audio_handler(message):
 
     chat, user = initialize(message)
@@ -218,7 +222,8 @@ def audio_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['sticker'])
+@bot.message_handler(chat_types=['supergroup'], content_types=['sticker'],
+                     func=lambda message: not message.from_user.is_bot)
 def sticker_handler(message):
 
     chat, user = initialize(message)
@@ -237,4 +242,3 @@ if __name__ == '__main__':
 # TODO: Local(group) leaderboard
 # TODO: Statistics graph (daily) (monthly)
 # TODO: Deleting data from database
-# TODO: Another media type logging
