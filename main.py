@@ -2,7 +2,7 @@ import os
 import re
 import telebot
 from dotenv import load_dotenv
-from database import session, Chat, User
+from database import session, Chat, User, Value
 from telebot.apihelper import ApiTelegramException as TgException
 
 load_dotenv()
@@ -20,13 +20,21 @@ def extract_arg(text):
 def get_data(chat_id, user_id):
     chat = session.query(Chat).filter_by(chat_id=chat_id).first()
     if not chat:
-        chat = Chat(chat_id=chat_id)
+        value = Value()
+        session.add(value)
+        session.commit()
+
+        chat = Chat(chat_id=chat_id, values_id=value.id)
         session.add(chat)
         session.commit()
 
     user = session.query(User).filter_by(user_id=user_id, chat_id=chat_id).first()
     if not user:
-        user = User(user_id=user_id, chat_id=chat_id)
+        value = Value()
+        session.add(value)
+        session.commit()
+
+        user = User(user_id=user_id, chat_id=chat_id, values_id=value.id)
         session.add(user)
         session.commit()
 
@@ -42,12 +50,12 @@ def initialize(message):
 
 def send_stats(chat_id, user, firstname):
     joined = user.created_at
-    words = user.word_count
-    chars = user.ch_count
-    photo = user.photo_count
-    video = user.video_count
-    audio = user.audio_count
-    sticker = user.sticker_count
+    words = user.values.words_count
+    chars = user.values.ch_count
+    photo = user.values.photo_count
+    video = user.values.video_count
+    audio = user.values.audio_count
+    sticker = user.values.sticker_count
 
     return bot.send_message(
         chat_id,
@@ -137,7 +145,10 @@ def command_chats_handler(message):
 
     chats = []
     for user in users:
-        chats.append(bot.get_chat(user.chat_id))
+        try:
+            chats.append(bot.get_chat(user.chat_id))
+        except TgException:
+            pass
 
     if not chats:
         return bot.send_message(message.chat.id, 'Ви ще не зареєстровані ні в одному чаті.1')
@@ -162,22 +173,22 @@ def command_chats_handler(message):
     except IndexError:
         return bot.send_message(message.chat.id, "Ви обрали невірний айді.")
 
-    user_obj = session.query(User).filter_by(user_id=message.from_user.id, chat_id=chat.id).first()
-    if not user_obj:
+    user = session.query(User).filter_by(user_id=message.from_user.id, chat_id=chat.id).first()
+    if not user:
         return bot.send_message(message.chat.id, "На жаль, чат було видалено з бази данних.")
 
     try:
-        name = bot.get_chat(user_obj.chat_id).title
+        name = bot.get_chat(user.chat_id).title
     except TgException:
         name = "Deleted."
     firstname = message.from_user.first_name
-    joined = user_obj.created_at
-    words = user_obj.word_count
-    chars = user_obj.ch_count
-    photo = user_obj.photo_count
-    video = user_obj.video_count
-    audio = user_obj.audio_count
-    sticker = user_obj.sticker_count
+    joined = user.created_at
+    words = user.values.word_count
+    chars = user.values.ch_count
+    photo = user.values.photo_count
+    video = user.values.video_count
+    audio = user.values.audio_count
+    sticker = user.values.sticker_count
 
     return bot.send_message(
         message.chat.id,
@@ -197,6 +208,42 @@ def command_chats_handler(message):
     )
 
 
+@bot.message_handler(commands=['top'], chat_types=['supergroup'])
+def command_top_handler(message):
+    chat, user_ = initialize(message)
+
+    users = session.query(User).filter(User.chat_id == chat.chat_id).all()
+
+    if not users:
+        return bot.send_message(message.chat.id, "Не знайдено користувачів для топа.")
+
+    def compare(obj):
+        return obj.values.words_count
+
+    sorted_users = sorted(users, key=compare, reverse=True)
+    count = min(3, len(sorted_users))
+    top_3 = sorted_users[:count]
+
+    top_v = [user.values.words_count for user in top_3]
+    top_names = []
+
+    for index, user in enumerate(top_3):
+        try:
+            name = bot.get_chat_member(chat.chat_id, user.user_id).user.first_name
+        except TgException:
+            name = 'Deleted.'
+        top_names.append(name)
+
+    medals = ["🥇", "🥈", "🥉"]
+
+    msg = "<b>TOP-3 by words</b>\n\n"
+
+    for index, value in enumerate(top_v):
+        msg += f'''{medals[index]} {top_names[index]}: <b>{value}</b>\n'''
+
+    return bot.send_message(message.chat.id, msg, parse_mode='HTML')
+
+
 @bot.message_handler(chat_types=['supergroup'], content_types=['text'],
                      func=lambda message: not message.from_user.is_bot)
 def message_handler(message):
@@ -205,10 +252,10 @@ def message_handler(message):
     words = re.findall(r'\b\w+\b', message.text)
     characters = len(message.text)
 
-    chat.words_count += len(words)
-    chat.ch_count += characters
-    user.word_count += len(words)
-    user.ch_count += characters
+    chat.values.words_count += len(words)
+    chat.values.ch_count += characters
+    user.values.words_count += len(words)
+    user.values.ch_count += characters
 
     session.commit()
 
@@ -218,8 +265,8 @@ def message_handler(message):
 def photo_handler(message):
     chat, user = initialize(message)
 
-    chat.photo_count += 1
-    user.photo_count += 1
+    chat.values.photo_count += 1
+    user.values.photo_count += 1
 
     session.commit()
 
@@ -229,8 +276,8 @@ def photo_handler(message):
 def video_handler(message):
     chat, user = initialize(message)
 
-    chat.video_count += 1
-    user.video_count += 1
+    chat.values.video_count += 1
+    user.values.video_count += 1
 
     session.commit()
 
@@ -240,8 +287,8 @@ def video_handler(message):
 def audio_handler(message):
     chat, user = initialize(message)
 
-    chat.audio_count += 1
-    user.audio_count += 1
+    chat.values.audio_count += 1
+    user.values.audio_count += 1
 
     session.commit()
 
@@ -251,8 +298,8 @@ def audio_handler(message):
 def sticker_handler(message):
     chat, user = initialize(message)
 
-    chat.sticker_count += 1
-    user.sticker_count += 1
+    chat.values.sticker_count += 1
+    user.values.sticker_count += 1
 
     session.commit()
 
