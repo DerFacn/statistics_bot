@@ -17,10 +17,7 @@ def extract_arg(text):
         return None
 
 
-def initialize(message):
-    chat_id = message.chat.id
-    user_id = message.from_user.id
-
+def get_data(chat_id, user_id):
     chat = session.query(Chat).filter_by(chat_id=chat_id).first()
     if not chat:
         chat = Chat(chat_id=chat_id)
@@ -34,6 +31,13 @@ def initialize(message):
         session.commit()
 
     return chat, user
+
+
+def initialize(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+
+    return get_data(chat_id, user_id)
 
 
 @bot.message_handler(commands=['start'], chat_types=['private'])
@@ -67,7 +71,8 @@ def command_start_handler(message):
     )
 
 
-@bot.message_handler(commands=['p', 'profile', 'stats', 'п', 'профіль'], chat_types=['supergroup'])
+@bot.message_handler(commands=['p', 'profile', 'stats', 'п', 'профіль'], chat_types=['supergroup'],
+                     func=lambda message: not message.reply_to_message)
 def command_stats_handler(message):
     user = session.query(User).filter_by(user_id=message.from_user.id, chat_id=message.chat.id).first()
     if not user:
@@ -94,6 +99,46 @@ def command_stats_handler(message):
 🎵 Audio: <b>{audio}</b>
 ✨ Sticker: <b>{sticker}</b>
         ''',
+        parse_mode='HTML'
+    )
+
+
+@bot.message_handler(chat_types=['supergroup'], content_types=['text'],
+                     commands=['p', 'profile', 'stats', 'п', 'профіль'],
+                     func=lambda message: not message.from_user.is_bot and message.reply_to_message)
+def get_user_stats_by_reply(message):
+    user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
+
+    chat, user = get_data(chat_id, user_id)
+
+    if not chat:
+        return bot.send_message(chat_id, "Чат не знайдено в базі даних. Можливо, ніхто нічого ще не написав в нього.")
+
+    if not user:
+        return bot.send_message(chat_id, "Користувача не знайдено в базі даних. Схоже, він видалив свої дані.")
+
+    firstname = message.reply_to_message.from_user.first_name
+    joined = user.created_at
+    words = user.word_count
+    chars = user.ch_count
+    photo = user.photo_count
+    video = user.video_count
+    audio = user.audio_count
+    sticker = user.sticker_count
+
+    return bot.send_message(
+        message.chat.id,
+        f'''
+🧑‍💻 User: <b>{firstname}</b>
+🗓️ Joined: <b>{joined}</b>
+🔤 Words: <b>{words}</b>
+🔣 Characters: <b>{chars}</b>
+🖼️ Photo: <b>{photo}</b>
+📹 Video: <b>{video}</b>
+🎵 Audio: <b>{audio}</b>
+✨ Sticker: <b>{sticker}</b>
+            ''',
         parse_mode='HTML'
     )
 
@@ -159,7 +204,7 @@ def command_chats_handler(message):
 🔤 Words: <b>{words}</b>
 🔣 Characters: <b>{chars}</b>
 🖼️ Photo: <b>{photo}</b>
-📹 Video: <b>{video}<b>
+📹 Video: <b>{video}</b>
 🎵 Audio: <b>{audio}</b>
 ✨ Sticker: <b>{sticker}</b>
         ''',
