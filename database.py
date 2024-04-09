@@ -11,7 +11,7 @@ class Chat(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     chat_id: Mapped[int] = mapped_column(unique=True, index=True)
 
-    users: Mapped[List['User']] = relationship(back_populates='chat')
+    users: Mapped[List['User']] = relationship(back_populates='chat', cascade='all, delete-orphan')
 
     words_count: Mapped[int] = mapped_column(default=0)
     ch_count: Mapped[int] = mapped_column(default=0)

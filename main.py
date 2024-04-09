@@ -40,6 +40,31 @@ def initialize(message):
     return get_data(chat_id, user_id)
 
 
+def send_stats(chat_id, user, firstname):
+    joined = user.created_at
+    words = user.word_count
+    chars = user.ch_count
+    photo = user.photo_count
+    video = user.video_count
+    audio = user.audio_count
+    sticker = user.sticker_count
+
+    return bot.send_message(
+        chat_id,
+        f'''
+🧑‍💻 User: <b>{firstname}</b>
+🗓️ Joined: <b>{joined}</b>
+🔤 Words: <b>{words}</b>
+🔣 Characters: <b>{chars}</b>
+🖼️ Photo: <b>{photo}</b>
+📹 Video: <b>{video}</b>
+🎵 Audio: <b>{audio}</b>
+✨ Sticker: <b>{sticker}</b>
+            ''',
+        parse_mode='HTML'
+    )
+
+
 @bot.message_handler(commands=['start'], chat_types=['private'])
 def command_start_handler(message):
     user = session.query(User).filter_by(user_id=message.from_user.id).first()
@@ -79,28 +104,8 @@ def command_stats_handler(message):
         return bot.send_message(message.chat.id, 'Статистика пуста. Напишіть хоча б одне повідомлення.')
 
     firstname = bot.get_chat_member(user.chat_id, user.user_id).user.first_name
-    joined = user.created_at
-    words = user.word_count
-    chars = user.ch_count
-    photo = user.photo_count
-    video = user.video_count
-    audio = user.audio_count
-    sticker = user.sticker_count
 
-    return bot.send_message(
-        message.chat.id,
-        f'''
-🧑‍💻 User: <b>{firstname}</b>
-🗓️ Joined: <b>{joined}</b>
-🔤 Words: <b>{words}</b>
-🔣 Characters: <b>{chars}</b>
-🖼️ Photo: <b>{photo}</b>
-📹 Video: <b>{video}</b>
-🎵 Audio: <b>{audio}</b>
-✨ Sticker: <b>{sticker}</b>
-        ''',
-        parse_mode='HTML'
-    )
+    send_stats(message.chat.id, user, firstname)
 
 
 @bot.message_handler(chat_types=['supergroup'], content_types=['text'],
@@ -119,28 +124,8 @@ def get_user_stats_by_reply(message):
         return bot.send_message(chat_id, "Користувача не знайдено в базі даних. Схоже, він видалив свої дані.")
 
     firstname = message.reply_to_message.from_user.first_name
-    joined = user.created_at
-    words = user.word_count
-    chars = user.ch_count
-    photo = user.photo_count
-    video = user.video_count
-    audio = user.audio_count
-    sticker = user.sticker_count
 
-    return bot.send_message(
-        message.chat.id,
-        f'''
-🧑‍💻 User: <b>{firstname}</b>
-🗓️ Joined: <b>{joined}</b>
-🔤 Words: <b>{words}</b>
-🔣 Characters: <b>{chars}</b>
-🖼️ Photo: <b>{photo}</b>
-📹 Video: <b>{video}</b>
-🎵 Audio: <b>{audio}</b>
-✨ Sticker: <b>{sticker}</b>
-            ''',
-        parse_mode='HTML'
-    )
+    send_stats(message.chat.id, user, firstname)
 
 
 @bot.message_handler(commands=['chats', 'чати'], chat_types=['private'])
