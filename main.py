@@ -104,6 +104,19 @@ def command_start_handler(message):
     )
 
 
+@bot.message_handler(commands=['help'], chat_types=['private', 'supergroup'])
+def command_help_private_handler(message):
+    msg = '''
+<b>Команди</b>
+
+/stats - дізнатись статистику (групи). У відповідь на повідомлення, пише стати-ку цього користувача.
+/top - топ-3 самих активних (групи)
+/chats - чати з вашою стати-кою (приват)
+/chats 1 - стати-ка певного чату (приват)
+    '''
+    bot.send_message(message.chat.id, msg, parse_mode='HTML')
+
+
 @bot.message_handler(commands=['p', 'profile', 'stats', 'п', 'профіль'], chat_types=['supergroup'],
                      func=lambda message: not message.reply_to_message)
 def command_stats_handler(message):
@@ -208,7 +221,7 @@ def command_chats_handler(message):
     )
 
 
-@bot.message_handler(commands=['top'], chat_types=['supergroup'])
+@bot.message_handler(commands=['top', 't', 'топ', 'т'], chat_types=['supergroup'])
 def command_top_handler(message):
     chat, user_ = initialize(message)
 
