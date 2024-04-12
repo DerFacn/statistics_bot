@@ -3,6 +3,7 @@ matplotlib.use('Agg')
 import os
 import re
 import telebot
+import warnings
 import datetime
 from uuid import uuid4
 from dotenv import load_dotenv
@@ -13,6 +14,7 @@ from database import session, Chat, User, Value
 from telebot.apihelper import ApiTelegramException as TgException
 
 load_dotenv()
+warnings.filterwarnings('ignore')  # Matplotlib UserWarning disable
 TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 
@@ -86,34 +88,56 @@ def get_user_stats(message):
     return stats.query(Record).filter(Record.user_id == user_id, Record.chat_id == chat_id, Record.day == day).all()
 
 
-def draw_hours_graph(stats_):
+def get_group_stats(message):
+    chat_id = message.chat.id
+    day = datetime.datetime.now().strftime('%d')
+    return stats.query(Group).filter(Group.chat_id == chat_id, Group.day == day).all()
+
+
+def draw_graph(stats_, title):
     y = [0] * 24
 
     for stat in stats_:
         y[stat.hour] = stat.count
 
-    highest = sorted(y, reverse=True)[0]
-    steps = int(str(highest)[:2]) + 3
-    power = len(str(highest)) - 2
-    step_weight = 1 * 10 ** power
+    '''
+    If you want more detailed Y-axis labels, uncomment this part of the code
+    '''
+    # highest = sorted(y, reverse=True)[0]
+    # steps = int(str(highest)[:2]) + 3
+    # power = len(str(highest)) - 2
+    # step_weight = 1 * 10 ** power
 
-    step = [step_weight * i for i in range(steps)]
+    # step = [step_weight * i for i in range(steps)]
 
+    plt.bar(range(24), y)
+    plt.xlabel('Hours')
+    plt.ylabel('Characters')
+    plt.title(f'{title}\'s graph')
+    plt.xticks(range(24))
+    # plt.yticks(step)
+    idd = str(uuid4())
+    plt.savefig(f'{idd}.png')
+    plt.close()
+    return idd
+
+
+def user_hours_graph(stats_):
     try:
         username = bot.get_chat_member(stats_[0].chat_id, stats_[0].user_id).user.first_name
     except TgException:
         username = 'Deleted.'
 
-    plt.bar(range(24), y)
-    plt.xlabel('Hours')
-    plt.ylabel('Characters')
-    plt.title(f'{username}\'s user graph')
-    plt.xticks(range(24))
-    plt.yticks(step)
-    idd = str(uuid4())
-    plt.savefig(f'{idd}.png')
-    plt.close()
-    return idd
+    return draw_graph(stats_, username)
+
+
+def group_hours_graph(stats_):
+    try:
+        title = bot.get_chat(stats_[0].chat_id).title
+    except TgException:
+        title = 'Deleted.'
+
+    return draw_graph(stats_, title)
 
 
 def initialize(message):
@@ -229,11 +253,23 @@ def get_user_stats_by_reply(message):
                      func=lambda message: not message.from_user.is_bot)
 def send_user_graph(message):
     stats_ = get_user_stats(message)
-    idd = draw_hours_graph(stats_)
+    idd = user_hours_graph(stats_)
 
-    with open(f'{idd}.png', 'rb') as photo:
-        file = photo.read()
-        bot.send_photo(message.chat.id, file)
+    with open(f'{idd}.png', 'rb') as file:
+        photo = file.read()
+        bot.send_photo(message.chat.id, photo)
+    os.system(f'del {idd}.png') if os.name == 'nt' else os.system(f'rm {idd}.png')
+
+
+@bot.message_handler(chat_types=['supergroup'], commands=['chat'],
+                     func=lambda message: not message.from_user.is_bot)
+def send_chat_graph(message):
+    stats_ = get_group_stats(message)
+    idd = group_hours_graph(stats_)
+
+    with open(f'{idd}.png', 'rb') as file:
+        photo = file.read()
+        bot.send_photo(message.chat.id, photo)
     os.system(f'del {idd}.png') if os.name == 'nt' else os.system(f'rm {idd}.png')
 
 
