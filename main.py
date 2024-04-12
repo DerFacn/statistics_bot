@@ -1,8 +1,15 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import os
 import re
+from uuid import uuid4
 import telebot
+import datetime
 from dotenv import load_dotenv
 from database import session, Chat, User, Value
+from stats import session as stats
+from stats import Record, Group
 from telebot.apihelper import ApiTelegramException as TgException
 
 load_dotenv()
@@ -39,6 +46,43 @@ def get_data(chat_id, user_id):
         session.commit()
 
     return chat, user
+
+
+def get_stats(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    hour = int(datetime.datetime.now().strftime('%H'))
+    day = datetime.datetime.now().strftime('%d')
+
+    group = stats.query(Group).filter_by(chat_id=chat_id, day=day, hour=hour).first()
+    if not group:
+        group = Group(
+            chat_id=chat_id,
+            day=day,
+            hour=hour
+        )
+        stats.add(group)
+        stats.commit()
+
+    record = stats.query(Record).filter_by(user_id=user_id, chat_id=chat_id, day=day, hour=hour).first()
+    if not record:
+        record = Record(
+            user_id=user_id,
+            chat_id=chat_id,
+            day=day,
+            hour=hour
+        )
+        stats.add(record)
+        stats.commit()
+
+    return group, record
+
+
+def get_user_stats(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    day = datetime.datetime.now().strftime('%d')
+    return stats.query(Record).filter(Record.user_id == user_id, Record.chat_id == chat_id, Record.day == day).all()
 
 
 def initialize(message):
@@ -149,6 +193,42 @@ def get_user_stats_by_reply(message):
     send_stats(message.chat.id, user, firstname)
 
 
+@bot.message_handler(chat_types=['supergroup'], commands=['me'],
+                     func=lambda message: not message.from_user.is_bot)
+def send_user_graph(message):
+    try:
+        username = bot.get_chat_member(message.chat.id, message.from_user.id).user.first_name
+    except TgException:
+        username = 'Deleted.'
+
+    stats_ = get_user_stats(message)
+    y = [0] * 24
+
+    for stat in stats_:
+        y[stat.hour] = stat.count
+
+    highest = sorted(y, reverse=True)[0]
+    steps = int(str(highest)[:2]) + 3
+    power = len(str(highest)) - 2
+    step_weight = 1 * 10 ** power
+
+    step = [step_weight * i for i in range(steps)]
+
+    plt.bar(range(24), y)
+    plt.xlabel('Hours')
+    plt.ylabel('Characters')
+    plt.title(f'{username}\'s user graph')
+    plt.xticks(range(24))
+    plt.yticks(step)
+    idd = str(uuid4())
+    plt.savefig(f'{idd}.png')
+    plt.close()
+    with open(f'{idd}.png', 'rb') as photo:
+        file = photo.read()
+        bot.send_photo(message.chat.id, file)
+
+
+
 @bot.message_handler(commands=['chats', 'чати'], chat_types=['private'])
 def command_chats_handler(message):
     users = session.query(User).filter(User.user_id == message.from_user.id).all()
@@ -196,7 +276,7 @@ def command_chats_handler(message):
         name = "Deleted."
     firstname = message.from_user.first_name
     joined = user.created_at
-    words = user.values.word_count
+    words = user.values.words_count
     chars = user.values.ch_count
     photo = user.values.photo_count
     video = user.values.video_count
@@ -261,16 +341,20 @@ def command_top_handler(message):
                      func=lambda message: not message.from_user.is_bot)
 def message_handler(message):
     chat, user = initialize(message)
+    group, record = get_stats(message)
 
     words = re.findall(r'\b\w+\b', message.text)
     characters = len(message.text)
 
     chat.values.words_count += len(words)
     chat.values.ch_count += characters
+    group.count += characters
     user.values.words_count += len(words)
     user.values.ch_count += characters
+    record.count += characters
 
     session.commit()
+    stats.commit()
 
 
 @bot.message_handler(chat_types=['supergroup'], content_types=['photo'],
@@ -318,6 +402,5 @@ def sticker_handler(message):
 
 
 # TODO: Global leaderboard
-# TODO: Local(group) leaderboard
-# TODO: Statistics graph (daily) (monthly)
+# TODO: Statistics graph (monthly)
 # TODO: Deleting data from database
