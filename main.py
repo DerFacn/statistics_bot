@@ -86,6 +86,36 @@ def get_user_stats(message):
     return stats.query(Record).filter(Record.user_id == user_id, Record.chat_id == chat_id, Record.day == day).all()
 
 
+def draw_hours_graph(stats_):
+    y = [0] * 24
+
+    for stat in stats_:
+        y[stat.hour] = stat.count
+
+    highest = sorted(y, reverse=True)[0]
+    steps = int(str(highest)[:2]) + 3
+    power = len(str(highest)) - 2
+    step_weight = 1 * 10 ** power
+
+    step = [step_weight * i for i in range(steps)]
+
+    try:
+        username = bot.get_chat_member(stats_[0].chat_id, stats_[0].user_id).user.first_name
+    except TgException:
+        username = 'Deleted.'
+
+    plt.bar(range(24), y)
+    plt.xlabel('Hours')
+    plt.ylabel('Characters')
+    plt.title(f'{username}\'s user graph')
+    plt.xticks(range(24))
+    plt.yticks(step)
+    idd = str(uuid4())
+    plt.savefig(f'{idd}.png')
+    plt.close()
+    return idd
+
+
 def initialize(message):
     chat_id = message.chat.id
     user_id = message.from_user.id
@@ -198,36 +228,13 @@ def get_user_stats_by_reply(message):
 @bot.message_handler(chat_types=['supergroup'], commands=['me'],
                      func=lambda message: not message.from_user.is_bot)
 def send_user_graph(message):
-    try:
-        username = bot.get_chat_member(message.chat.id, message.from_user.id).user.first_name
-    except TgException:
-        username = 'Deleted.'
-
     stats_ = get_user_stats(message)
-    y = [0] * 24
+    idd = draw_hours_graph(stats_)
 
-    for stat in stats_:
-        y[stat.hour] = stat.count
-
-    highest = sorted(y, reverse=True)[0]
-    steps = int(str(highest)[:2]) + 3
-    power = len(str(highest)) - 2
-    step_weight = 1 * 10 ** power
-
-    step = [step_weight * i for i in range(steps)]
-
-    plt.bar(range(24), y)
-    plt.xlabel('Hours')
-    plt.ylabel('Characters')
-    plt.title(f'{username}\'s user graph')
-    plt.xticks(range(24))
-    plt.yticks(step)
-    idd = str(uuid4())
-    plt.savefig(f'{idd}.png')
-    plt.close()
     with open(f'{idd}.png', 'rb') as photo:
         file = photo.read()
         bot.send_photo(message.chat.id, file)
+    os.system(f'del {idd}.png') if os.name == 'nt' else os.system(f'rm {idd}.png')
 
 
 @bot.message_handler(commands=['chats', 'чати'], chat_types=['private'])
