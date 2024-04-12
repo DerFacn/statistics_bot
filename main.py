@@ -173,7 +173,8 @@ def send_stats(chat_id, user, firstname):
 
 
 # ======================================= Commands handlers ======================================= #
-@bot.message_handler(commands=['start'], chat_types=['private'])
+@bot.message_handler(commands=['start'],
+                     chat_types=['private'], func=lambda message: not message.from_user.is_bot)
 def command_start_handler(message):
     user = session.query(User).filter_by(user_id=message.from_user.id).first()
     if not user:
@@ -204,7 +205,8 @@ def command_start_handler(message):
     )
 
 
-@bot.message_handler(commands=['help'], chat_types=['private', 'supergroup'])
+@bot.message_handler(commands=['help'],
+                     chat_types=['private', 'supergroup'], func=lambda message: not message.from_user.is_bot)
 def command_help_private_handler(message):
     msg = '''
 <b>Команди</b>
@@ -217,8 +219,8 @@ def command_help_private_handler(message):
     bot.send_message(message.chat.id, msg, parse_mode='HTML')
 
 
-@bot.message_handler(commands=['p', 'profile', 'stats', 'п', 'профіль'], chat_types=['supergroup'],
-                     func=lambda message: not message.reply_to_message)
+@bot.message_handler(commands=['p', 'profile', 'stats', 'п', 'профіль'],
+                     chat_types=['supergroup'], func=lambda message: not message.reply_to_message)
 def command_stats_handler(message):
     user = session.query(User).filter_by(user_id=message.from_user.id, chat_id=message.chat.id).first()
     if not user:
@@ -229,8 +231,8 @@ def command_stats_handler(message):
     send_stats(message.chat.id, user, firstname)
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['text'],
-                     commands=['p', 'profile', 'stats', 'п', 'профіль'],
+@bot.message_handler(commands=['p', 'profile', 'stats', 'п', 'профіль'],
+                     chat_types=['supergroup'],
                      func=lambda message: not message.from_user.is_bot and message.reply_to_message)
 def get_user_stats_by_reply(message):
     user_id = message.reply_to_message.from_user.id
@@ -249,8 +251,8 @@ def get_user_stats_by_reply(message):
     send_stats(message.chat.id, user, firstname)
 
 
-@bot.message_handler(chat_types=['supergroup'], commands=['me'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(commands=['me'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def send_user_graph(message):
     stats_ = get_user_stats(message)
     idd = user_hours_graph(stats_)
@@ -261,8 +263,8 @@ def send_user_graph(message):
     os.system(f'del {idd}.png') if os.name == 'nt' else os.system(f'rm {idd}.png')
 
 
-@bot.message_handler(chat_types=['supergroup'], commands=['chat'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(commands=['chat'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def send_chat_graph(message):
     stats_ = get_group_stats(message)
     idd = group_hours_graph(stats_)
@@ -273,7 +275,8 @@ def send_chat_graph(message):
     os.system(f'del {idd}.png') if os.name == 'nt' else os.system(f'rm {idd}.png')
 
 
-@bot.message_handler(commands=['chats', 'чати'], chat_types=['private'])
+@bot.message_handler(commands=['chats', 'чати'],
+                     chat_types=['private'], func=lambda message: not message.from_user.is_bot)
 def command_chats_handler(message):
     users = session.query(User).filter(User.user_id == message.from_user.id).all()
 
@@ -345,7 +348,8 @@ def command_chats_handler(message):
     )
 
 
-@bot.message_handler(commands=['top', 't', 'топ', 'т'], chat_types=['supergroup'])
+@bot.message_handler(commands=['top', 't', 'топ', 'т'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def command_top_handler(message):
     chat, user_ = initialize(message)
 
@@ -382,8 +386,8 @@ def command_top_handler(message):
 
 
 # ======================================= Message handlers ======================================= #
-@bot.message_handler(chat_types=['supergroup'], content_types=['text'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(content_types=['text'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def message_handler(message):
     chat, user = initialize(message)
     group, record = get_stats(message)
@@ -402,8 +406,8 @@ def message_handler(message):
     stats.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['photo'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(content_types=['photo'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def photo_handler(message):
     chat, user = initialize(message)
 
@@ -413,8 +417,8 @@ def photo_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['video'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(content_types=['video'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def video_handler(message):
     chat, user = initialize(message)
 
@@ -424,8 +428,8 @@ def video_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['audio'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(content_types=['audio'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def audio_handler(message):
     chat, user = initialize(message)
 
@@ -435,8 +439,8 @@ def audio_handler(message):
     session.commit()
 
 
-@bot.message_handler(chat_types=['supergroup'], content_types=['sticker'],
-                     func=lambda message: not message.from_user.is_bot)
+@bot.message_handler(content_types=['sticker'],
+                     chat_types=['supergroup'], func=lambda message: not message.from_user.is_bot)
 def sticker_handler(message):
     chat, user = initialize(message)
 
