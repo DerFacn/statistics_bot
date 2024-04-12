@@ -1,15 +1,15 @@
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import os
 import re
-from uuid import uuid4
 import telebot
 import datetime
+from uuid import uuid4
 from dotenv import load_dotenv
-from database import session, Chat, User, Value
-from stats import session as stats
 from stats import Record, Group
+import matplotlib.pyplot as plt
+from stats import session as stats
+from database import session, Chat, User, Value
 from telebot.apihelper import ApiTelegramException as TgException
 
 load_dotenv()
@@ -17,6 +17,7 @@ TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 
 
+# ======================================= Functions ======================================= #
 def extract_arg(text):
     try:
         return text.split()[1]
@@ -117,6 +118,7 @@ def send_stats(chat_id, user, firstname):
     )
 
 
+# ======================================= Commands handlers ======================================= #
 @bot.message_handler(commands=['start'], chat_types=['private'])
 def command_start_handler(message):
     user = session.query(User).filter_by(user_id=message.from_user.id).first()
@@ -228,7 +230,6 @@ def send_user_graph(message):
         bot.send_photo(message.chat.id, file)
 
 
-
 @bot.message_handler(commands=['chats', 'чати'], chat_types=['private'])
 def command_chats_handler(message):
     users = session.query(User).filter(User.user_id == message.from_user.id).all()
@@ -337,6 +338,7 @@ def command_top_handler(message):
     return bot.send_message(message.chat.id, msg, parse_mode='HTML')
 
 
+# ======================================= Message handlers ======================================= #
 @bot.message_handler(chat_types=['supergroup'], content_types=['text'],
                      func=lambda message: not message.from_user.is_bot)
 def message_handler(message):
